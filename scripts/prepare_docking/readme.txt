@@ -1,0 +1,39 @@
+
+Meeko package tutorial available at https://meeko.readthedocs.io/en/release-doc/
+
+Steps to prepare ligands:
+    1) Get SMILES of each ligand.
+        CMPD1.smi
+        CMPD2.smi
+        ...
+    2) In MOE
+        2.1) Create a new database.
+             all_H_ESP.mdb
+        2.2) Protonate at desired pH.
+        2.3) Calculate partial charges.
+        2.4) Save as a single MOL2 file.
+             In this case, I call it all_H_ESP.mol2
+    3) Split MOL2 file to obtain each ligand MOL2.
+        3.1) Use split_mol.awk
+             awk -f split_mol2
+    4) Prepare PDBQT files using Meeko package.
+        4.1) Install the develop branch of Meeko
+             https://github.com/forlilab/Meeko/tree/develop
+        4.2) Process .mol2 with mk_prepare_ligand.py, keeping partial charges computed in 2.3
+             mk_prepare_ligand.py -i all.mol2 \
+             --multimol_outdir test_pdbqt \
+             --charge_model read \
+             --multimol_prefix ID
+    5) Perform sanity checks
+        5.1) Check if pdbqt name match real name.
+        5.2) Check partial charges of .mol2 file and .pdbqt file.
+
+Steps to prepare the protein:
+    1) Get PDB file from Protein Data Bank (https://www.rcsb.org/)
+    2) In MOE
+        2.1) Protonate 3D
+        2.2) Minimize using MM forcefield
+        2.3) Check protonation states of important residues.
+    3) Prepare PDBQT file using Meeko package
+        4.1) If not installed, follow instructions https://meeko.readthedocs.io/en/release-doc/
+        4.2) mk_prepare_receptor -i protein.pdb --write_pdbqt protein_prepared.pdbqt
