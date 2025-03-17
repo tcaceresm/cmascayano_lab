@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ###################################################
-# Procesamiento del output de docking             #
+# Docking output processing                       #
 # 1) dlg -> sdf                                   #         
 # 2) sort docking conformations based on affinity #
 # 3) Obtain docking scores                        #
@@ -68,7 +68,7 @@ parallel --jobs ${THREADS} '
     # Calculating RMSD matrix #
     ###########################
     "
-    #${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -i ${OPATH}
+    ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -i ${OPATH}
 
     echo "Done calculating RMSD matrix"
 
@@ -77,5 +77,5 @@ parallel --jobs ${THREADS} '
     # Performing clustering based on RMSD #
     #######################################	
     "
-    #${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -i ${OPATH} -c ${CUTOFF}
+    ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -i ${OPATH} -c ${CUTOFF}
 ' ::: ${IPATH}/*.dlg
