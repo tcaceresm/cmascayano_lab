@@ -8,11 +8,10 @@ suppressPackageStartupMessages(library(dplyr))
 process_data <- function(rmsd_df_path, scores_path) {
   
   rmsd_df <- read.csv(rmsd_df_path, header = F)
-  #rmsd_df <- rmsd_df[, 2:ncol(rmsd_df)]
   rmsd_df <- cbind(data.frame(index=seq(nrow(rmsd_df))), rmsd_df)
   scores <- read.csv(scores_path, header = F, sep = ";")
   rmsd_df <- cbind(scores, rmsd_df)
-  colnames(rmsd_df) <- c("Energia", "Run", "Nombre", "Index", seq(nrow(rmsd_df)))
+  colnames(rmsd_df) <- c("Run", "Energia", "Index", seq(nrow(rmsd_df)))
   rmsd_matrix <- as.matrix(rmsd_df[, 5:ncol(rmsd_df)])
   return (list(rmsd_df, rmsd_matrix))
 }
