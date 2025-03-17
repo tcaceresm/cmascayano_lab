@@ -52,6 +52,6 @@ sorted_docking_output <- free_energies[order(free_energies$FreeEnergy), ]
 
 write.SDF(docking_output[sorted_docking_output$Pose],
           file = sprintf('%s/%s_sorted.sdf', output_path, ligand_name))
-write.csv(x = sorted_docking_output,
+write.csv(x = sorted_docking_output[-1, ],
           file = sprintf('%s/%s_docking_scores_sorted.csv', output_path, ligand_name),
           row.names = F)
