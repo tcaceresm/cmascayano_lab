@@ -58,6 +58,8 @@ done
 
 KEEP_DOCKING=1
 
+#
+
 LIGANDS_PDBQT=(${LIGANDS_PDBQT_PATH}/*.pdbqt)
 
 mkdir -p ${OUTPUT_PATH}
@@ -80,6 +82,7 @@ do
       echo "Docking ${LIGAND_NAME} failed. Continue." > ${OUTPUT_PATH}/${LIGAND_NAME}_failed.log
    else
       echo "Docking ${LIGAND_NAME} failed. Exiting." > ${OUTPUT_PATH}/${LIGAND_NAME}_failed.log
+      exit 1
    fi
 
 done
