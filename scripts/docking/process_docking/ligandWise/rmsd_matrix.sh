@@ -46,7 +46,7 @@ LIGAND_NAME=$(basename ${LIGAND_NAME} .dlg)
 SDF_DIR="${PROCESSED_DIRECTORY}/${LIGAND_NAME}/sdf"
 RMSD_FILE="${SDF_DIR}/${LIGAND_NAME}_RMSD_matrix.data"
 
-if [[ ! -f "${SDF_DIR}/${LIGAND_NAME}_sorted_conformations.sdf" ]]
+if [[ ! -f "${SDF_DIR}/${LIGAND_NAME}_sorted.sdf" ]]
 then
     echo "SDF of sorted conformations not found."
     exit 1
@@ -54,6 +54,6 @@ fi
 
 
 echo "Performing RMSD matrix calculation of ${LIGAND_NAME}"
-obrms -x ${SDF_DIR}/${LIGAND_NAME}_sorted_conformations.sdf > "${RMSD_FILE}_tmp"
+obrms -x ${SDF_DIR}/${LIGAND_NAME}_sorted.sdf > "${RMSD_FILE}_tmp"
 cat "${RMSD_FILE}_tmp" | awk '{$1=""}1' > "${RMSD_FILE}"
 rm "${RMSD_FILE}_tmp"
