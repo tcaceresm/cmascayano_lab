@@ -1,4 +1,5 @@
 Score only of ligand pose sampled from molecular dynamics simulation.
+For now, it works only after MM-PBSA rescoring.
 
 Steps
 	1) Protein-Ligand docking --> Protein-Ligand complex
