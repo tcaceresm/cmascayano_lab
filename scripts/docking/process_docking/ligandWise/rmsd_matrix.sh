@@ -46,7 +46,7 @@ LIGAND_NAME=$(basename ${LIGAND_NAME} .dlg)
 SDF_DIR="${PROCESSED_DIRECTORY}/${LIGAND_NAME}/sdf"
 RMSD_FILE="${SDF_DIR}/${LIGAND_NAME}_RMSD_matrix.data"
 
-if [[ ! -f "${SDF_DIR}/${LIGAND_NAME}_sorted_conformations.sdf" ]]
+if [[ ! -f "${SDF_DIR}/${LIGAND_NAME}_sorted.sdf" ]]
 then
     echo "SDF of sorted conformations not found."
     exit 1
