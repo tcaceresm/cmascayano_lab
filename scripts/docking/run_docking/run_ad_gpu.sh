@@ -31,7 +31,7 @@ Help()
 ############################################################
 # Get the options
 
-while getopts ":hr:b:l:o:n:f:" option; do
+while getopts ":hr:b:l:o:n:k:" option; do
    case $option in
       h) # Print this help
          Help
@@ -46,7 +46,7 @@ while getopts ":hr:b:l:o:n:f:" option; do
          OUTPUT_PATH=$OPTARG;;
       n) # NRuns
          NRUNS=$OPTARG;;
-      f) # Keep docking if a ligand fails.
+      k) # Keep docking if a ligand fails.
          KEEP_DOCKING=$OPTARG;;
      \?) # Invalid option
          echo "Error: Invalid option"
