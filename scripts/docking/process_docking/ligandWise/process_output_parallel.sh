@@ -59,7 +59,7 @@ parallel --jobs ${THREADS} '
     # Processing dlg file #
     ########################
     "
-    ${SCRIPT_PATH}/process_dlg_new.sh -d ${LIGAND_DLG} -o ${OPATH}
+    ${SCRIPT_PATH}/process_dlg.sh -d ${LIGAND_DLG} -o ${OPATH}
 
     echo "Done processing dlg file!"
 
