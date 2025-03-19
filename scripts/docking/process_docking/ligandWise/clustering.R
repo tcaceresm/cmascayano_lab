@@ -11,9 +11,10 @@ process_data <- function(rmsd_df_path, scores_path) {
   rmsd_df <- cbind(data.frame(index=seq(nrow(rmsd_df))), rmsd_df)
   scores <- read.csv(scores_path, header = F, sep = ";")
   rmsd_df <- cbind(scores, rmsd_df)
-  colnames(rmsd_df) <- c("Run", "Energia", "Index", seq(nrow(rmsd_df)))
-  rmsd_matrix <- as.matrix(rmsd_df[, 5:ncol(rmsd_df)])
+  colnames(rmsd_df) <- c("Ligand", "Run", "Energia", "Index", seq(nrow(rmsd_df)))
+  rmsd_matrix <- as.matrix(rmsd_df[, 6:ncol(rmsd_df)])
   return (list(rmsd_df, rmsd_matrix))
+  
 }
 
 
@@ -60,14 +61,13 @@ write_sdf_clusters <- function(rmsd_df, sdf_path, clusters, output_path, ligand_
   
   sdf_file <- ChemmineR::read.SDFset(sdf_path)
 
-  
   # if cluster lenght is only 1, i'll consider as "outliers"
   outliers <- NULL
   
   for (cluster_index in seq_along(clusters)) {
     
     cluster <- clusters[[cluster_index]]
-    
+
     if (length(cluster) > 1) {
 
       statistics <- rmsd_df %>% 
@@ -76,7 +76,7 @@ write_sdf_clusters <- function(rmsd_df, sdf_path, clusters, output_path, ligand_
                   meanEnergy=mean(Energia),
                   minEnergy=min(Energia),
                   sdEnergy=sd(Energia)) %>% round(., 3)
-      
+
       write.SDF(sdf_file[clusters[[cluster_index]]],
                 file = sprintf('%s/%s_cutoff=%s_cluster%s_size=%s_mean=%s_min=%s_std=%s.sdf',
                                output_path,ligand_name,cutoff,cluster_index,statistics$N,statistics$meanEnergy,statistics$minEnergy,statistics$sdEnergy
