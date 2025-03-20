@@ -12,7 +12,7 @@ process_data <- function(rmsd_df_path, scores_path) {
   scores <- read.csv(scores_path, header = F, sep = ";")
   rmsd_df <- cbind(scores, rmsd_df)
   colnames(rmsd_df) <- c("Ligand", "Run", "Energia", "Index", seq(nrow(rmsd_df)))
-  rmsd_matrix <- as.matrix(rmsd_df[, 6:ncol(rmsd_df)])
+  rmsd_matrix <- as.matrix(rmsd_df[, 5:ncol(rmsd_df)])
   return (list(rmsd_df, rmsd_matrix))
   
 }
@@ -113,7 +113,6 @@ write_sdf_clusters <- function(rmsd_df, sdf_path, clusters, output_path, ligand_
 # Rscript -----------------------------------------------------------------
 # Arguments should be Ligand_RMSD_matrix.data path, docking scores (sorted) and a cutoff value
 args <- commandArgs()
-
 rmsd_df_path <- args[6]
 docking_scores <- args[7]
 cutoff <- as.numeric(args[8])
@@ -124,9 +123,7 @@ ligand_name <- args[11]
 # Run Clustering ----------------------------------------------------------
 # processed_data[1] rmsd_df and processed_data[2] rmsd_matrix
 processed_data <- process_data(rmsd_df_path = rmsd_df_path, scores_path = docking_scores)
-
 clusters <- cluster_docking(rmsd_matrix = processed_data[[2]], cutoff = cutoff)
-
 write_sdf_clusters(rmsd_df = processed_data[[1]], 
                    sdf_path = sdf_path,
                    clusters = clusters,
