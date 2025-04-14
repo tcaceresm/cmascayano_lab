@@ -1,13 +1,12 @@
 #!/bin/bash
 
 ###################################################
-# Docking output processing                       #
-# 1) dlg -> sdf                                   #         
-# 2) sort docking conformations based on affinity #
-# 3) Obtain docking scores                        #
-#    Step 1 to 3 run with ChemmineR in R
-# 4) RMSD matrix (OpenBabel)                      #
-# 5) Clustering basado en RMSD -> in R            #
+# Docking output processing     
+# 1) Processing of DLG requires:
+    # Meeko Package (https://github.com/forlilab/Meeko)
+    # ChemmineR Package
+# 2) RMSD matrix requires OpenBabel package
+# 3) Clustering requires dplyr, ChemmineR and jsonlite
 ###################################################
 
 ############################################################
@@ -22,9 +21,12 @@ Help() {
     echo "o     Processed output directory."
     echo "c     Clustering cutoff"
     echo "n     Threads (for parallel run)"
+    echo "p     Process DLG?"
+    echo "r     Compute RMSD matrix?"
+    echo "t     Compute clustering?"
 }
 
-while getopts ":hd:o:c:n:" option; do
+while getopts ":hd:o:c:n:p:r:t" option; do
     case $option in
         h)  # Print this help
             Help
@@ -37,11 +39,22 @@ while getopts ":hd:o:c:n:" option; do
             CUTOFF=$OPTARG;;
         n)  # Cores
             THREADS=$OPTARG;;
+        p)  # Process DLG
+            PROCESS_DLG=$OPTARG;;
+        r)  # Calculate RMSD matrix
+            RMSD_MATRIX=$OPTARG;;
+        t)  # Cluster
+            CLUSTERING=$OPTARG;;
         \?) # Invalid option
             echo "Error: Invalid option"
             exit;;
     esac
 done
+
+if [[ -z "${IPATH}" || -z "${OPATH}" || -z "${CUTOFF}" || -z "${THREADS}" ]]
+then
+    echo "Missing arguments. Exiting."
+fi
 
 SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -49,33 +62,35 @@ SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export SCRIPT_PATH
 export OPATH
 export CUTOFF
+export PROCESS_DLG
+export RMSD_MATRIX
+export CLUSTERING
+
+if ! compgen -G "${IPATH}/*.dlg" > /dev/null
+then
+    echo "Can't find DLG files"
+    echo "Exiting."
+    exit 1
+fi
 
 # Parallel processing for each .dlg file
-parallel --jobs ${THREADS} '
-    LIGAND_DLG={1}
+parallel --halt soon,fail=1 --jobs ${THREADS} '
+    set -e 
     
-    echo "
-    ########################
-    # Processing dlg file #
-    ########################
-    "
-    ${SCRIPT_PATH}/process_dlg.sh -d ${LIGAND_DLG} -o ${OPATH}
+    LIGAND_DLG={1}
 
-    echo "Done processing dlg file!"
-
-    echo "
-    ###########################
-    # Calculating RMSD matrix #
-    ###########################
-    "
-    ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -i ${OPATH}
-
-    echo "Done calculating RMSD matrix"
-
-    echo "
-    #######################################
-    # Performing clustering based on RMSD #
-    #######################################	
-    "
-    ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -i ${OPATH} -c ${CUTOFF}
+    if [[ ${PROCESS_DLG} -eq 1 ]]
+    then
+        ${SCRIPT_PATH}/process_dlg.sh -d ${LIGAND_DLG} -o ${OPATH}
+    fi
+    
+    if [[ ${RMSD_MATRIX} -eq 1 ]]
+    then
+        ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -i ${OPATH}
+    fi
+    
+    if [[ ${CLUSTERING} -eq 1 ]]
+    then
+        ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -i ${OPATH} -c ${CUTOFF}
+    fi
 ' ::: ${IPATH}/*.dlg
