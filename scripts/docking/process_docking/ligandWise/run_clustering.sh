@@ -35,19 +35,43 @@ done
 
 SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+if ! command -v Rscript &> /dev/null
+then
+    echo "Rscript is not installed. Please install R and try again."
+    exit 1
+fi
 
 LIGAND_NAME=$(basename $LIGAND_NAME .dlg)
 
 SDF_DIR="${PROCESSED_DIRECTORY}/${LIGAND_NAME}/sdf"
-PDB_DIR="${PROCESSED_DIRECTORY}/${LIGAND_NAME}/pdb"
 
-rmsd_df_path=${SDF_DIR}/${LIGAND_NAME}_RMSD_matrix.data
+rmsd_df=${SDF_DIR}/${LIGAND_NAME}_RMSD_matrix.data
+
+if [[ ! -f ${rmsd_df} ]]
+then
+    echo "RMSD matrix not found."
+    exit 1
+fi
+
 docking_scores=${SDF_DIR}/${LIGAND_NAME}_docking_scores_sorted.csv
-sdf_path=${SDF_DIR}/${LIGAND_NAME}_sorted.sdf
+
+if [[ ! -f ${docking_scores} ]]
+then
+    echo "Docking scores csv file not found."
+    exit 1
+fi
+
+sdf=${SDF_DIR}/${LIGAND_NAME}_sorted.sdf
+
+if [[ ! -f ${sdf} ]]
+then
+    echo "SDF file not found."
+    exit 1
+fi
 output_path=${SDF_DIR}/cluster/${CUTOFF}
 
 mkdir -p ${output_path}
 
 echo "Performing pose clustering of $LIGAND_NAME"
 
-Rscript ${SCRIPT_PATH}/clustering.R $rmsd_df_path $docking_scores $CUTOFF $sdf_path $output_path $LIGAND_NAME
+Rscript ${SCRIPT_PATH}/clustering.R $rmsd_df $docking_scores $CUTOFF $sdf $output_path $LIGAND_NAME
