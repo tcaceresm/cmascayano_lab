@@ -6,27 +6,23 @@ Steps to prepare ligands:
         CMPD1.smi
         CMPD2.smi
         ...
-    2) In MOE
+    2) Protonate and compute partial charges. In MOE:
         2.1) Create a new database.
              all_H_ESP.mdb
         2.2) Protonate at desired pH.
         2.3) Calculate partial charges.
         2.4) Save as a single MOL2 file.
              In this case, I call it all_H_ESP.mol2
-    3) Split MOL2 file to obtain each ligand MOL2.
-        3.1) Use split_mol.awk
-             awk -f split_mol2
     4) Prepare PDBQT files using Meeko package.
         4.1) Install the develop branch of Meeko
              https://github.com/forlilab/Meeko/tree/develop
         4.2) Process .mol2 with mk_prepare_ligand.py, keeping partial charges computed in 2.3
              mk_prepare_ligand.py -i all.mol2 \
              --multimol_outdir test_pdbqt \
-             --charge_model read \
-             --multimol_prefix ID
+             --charge_model read \ # this is why we need develop branch             
     5) Perform sanity checks
         5.1) Check if pdbqt name match real name.
-        5.2) Check partial charges of .mol2 file and .pdbqt file.
+        5.2) Compare partial charges of .mol2 file and .pdbqt file.
 
 Steps to prepare the protein:
     1) Get PDB file from Protein Data Bank (https://www.rcsb.org/)

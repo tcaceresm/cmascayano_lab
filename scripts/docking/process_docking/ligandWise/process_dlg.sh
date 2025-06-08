@@ -40,11 +40,18 @@ done
 if ! command -v mk_export.py &> /dev/null
 then
     echo "Can't find mk_export.py script"
+    echo "https://meeko.readthedocs.io/"
+    echo "Exiting."
+    exit 1
+fi
+
+if ! command -v Rscript &> /dev/null
+then
+    echo "Rscript is not installed. Please install R and try again."
     exit 1
 fi
 
 SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 
 LIGAND_NAME=$(basename ${DLG_FILE} .dlg)
 LIGAND_SDF=${LIGAND_NAME}.sdf
