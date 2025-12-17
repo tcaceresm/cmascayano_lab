@@ -12,11 +12,11 @@ Help() {
     echo "Options:"
     echo "h     Print help"
     echo "c     RMSD cutoff."
-    echo "d     Ligand Name."
-    echo "i     Processed ligands' directory."
+    echo "d     Ligand DLG."
+    echo "o     Processed ligands' directory."
 }
 
-while getopts ":hc:d:i:" option; do
+while getopts ":hc:d:o:" option; do
     case $option in
         h)  # Print this help
             Help
@@ -24,8 +24,8 @@ while getopts ":hc:d:i:" option; do
         c)  # RMSD cutoff
             CUTOFF=$OPTARG;;
         d)  # Enter the input directory
-            LIGAND_NAME=$OPTARG;;
-        i)  # Output directory
+            LIGAND_DLG=$OPTARG;;
+        o)  # Output directory
             PROCESSED_DIRECTORY=$OPTARG;;
         \?) # Invalid option
             echo "Error: Invalid option"
@@ -41,7 +41,7 @@ then
     exit 1
 fi
 
-LIGAND_NAME=$(basename $LIGAND_NAME .dlg)
+LIGAND_NAME=$(basename $LIGAND_DLG .dlg)
 
 SDF_DIR="${PROCESSED_DIRECTORY}/${LIGAND_NAME}/sdf"
 
@@ -53,7 +53,7 @@ then
     exit 1
 fi
 
-docking_scores=${SDF_DIR}/${LIGAND_NAME}_docking_scores_sorted.csv
+docking_scores=${PROCESSED_DIRECTORY}/${LIGAND_NAME}/docking_scores.csv
 
 if [[ ! -f ${docking_scores} ]]
 then
@@ -61,7 +61,7 @@ then
     exit 1
 fi
 
-sdf=${SDF_DIR}/${LIGAND_NAME}_sorted.sdf
+sdf=${SDF_DIR}/${LIGAND_NAME}_sorted_conformations.sdf
 
 if [[ ! -f ${sdf} ]]
 then

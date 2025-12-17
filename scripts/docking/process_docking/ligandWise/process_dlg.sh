@@ -55,18 +55,18 @@ SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 LIGAND_NAME=$(basename ${DLG_FILE} .dlg)
 LIGAND_SDF=${LIGAND_NAME}.sdf
-OUTPUT_PATH="${OPATH}/${LIGAND_NAME}/sdf/"
+OUTPUT_PATH="${OPATH}/${LIGAND_NAME}/"
 
 echo "Converting ${DLG_FILE} to ${LIGAND_SDF}"
 
-mkdir -p ${OUTPUT_PATH}
+mkdir -p ${OUTPUT_PATH}/sdf
 
-mk_export.py ${DLG_FILE} -s ${OUTPUT_PATH}/${LIGAND_SDF} --all_dlg_poses
+mk_export.py ${DLG_FILE} -s ${OUTPUT_PATH}/sdf/${LIGAND_SDF} --all_dlg_poses
 
 echo "Converted ${LIGAND_PDBQT} to ${LIGAND_NAME}.sdf"
 
 echo "Sorting SDF based on docking scores"
 
-Rscript ${SCRIPT_PATH}/process_dlg.R ${OUTPUT_PATH}/${LIGAND_SDF} ${OUTPUT_PATH}
+Rscript ${SCRIPT_PATH}/process_dlg.R ${OUTPUT_PATH}/sdf/${LIGAND_SDF} ${OUTPUT_PATH}
 
 echo "Sorted!"

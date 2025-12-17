@@ -14,10 +14,10 @@
 ############################################################
 Help() {
     echo "Script used to process AD output"
-    echo "Syntax: process_output.sh [-h|d|o|c]"
     echo "Options:"
     echo "h     Print help."
     echo "d     DLG files path."
+    echo "f     DLG files."
     echo "o     Processed output directory."
     echo "c     Clustering cutoff"
     echo "n     Threads (for parallel run)"
@@ -26,13 +26,15 @@ Help() {
     echo "t     Compute clustering?"
 }
 
-while getopts ":hd:o:c:n:p:r:t" option; do
+while getopts ":hd:f:o:c:n:p:r:t:" option; do
     case $option in
         h)  # Print this help
             Help
             exit;;
         d)  # Enter the input directory
             IPATH=$OPTARG;;
+        f)  # DLG files
+            DLG_FILES=($OPTARG);;
         o)  # Output directory
             OPATH=$OPTARG;;
         c)  # Clustering cutoff
@@ -58,13 +60,16 @@ fi
 
 SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+
 # Export necessary variables for parallel jobs
 export SCRIPT_PATH
+export IPATH
 export OPATH
 export CUTOFF
 export PROCESS_DLG
 export RMSD_MATRIX
 export CLUSTERING
+export DLG_FILES
 
 if ! compgen -G "${IPATH}/*.dlg" > /dev/null
 then
@@ -75,7 +80,7 @@ fi
 
 # Parallel processing for each .dlg file
 parallel --halt soon,fail=1 --jobs ${THREADS} '
-    set -e 
+    #set -e 
     
     LIGAND_DLG={1}
 
@@ -86,11 +91,11 @@ parallel --halt soon,fail=1 --jobs ${THREADS} '
     
     if [[ ${RMSD_MATRIX} -eq 1 ]]
     then
-        ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -i ${OPATH}
+        ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -o ${OPATH}
     fi
     
     if [[ ${CLUSTERING} -eq 1 ]]
     then
-        ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -i ${OPATH} -c ${CUTOFF}
+        ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -o ${OPATH} -c ${CUTOFF}
     fi
-' ::: ${IPATH}/*.dlg
+' ::: ${x[@]}
