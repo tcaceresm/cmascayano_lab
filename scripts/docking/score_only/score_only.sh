@@ -8,8 +8,10 @@ set -euo pipefail
 Help()
 {
    # Display Help
-   echo "Usage: bash score_only.sh [-h] [-d DIRECTORY] [-n LIG_RESNUM] [-a LIG_NAME] [-c MINIMIZATION_FILE]"
-   echo
+   echo "Script to perform rescore and redocking of protein-ligand complex"
+   echo "obtained from AMBER minimization".
+   echo "Docking is computed using AutoDock-GPU"
+   echo "Workflow:"
    echo "AMBER Protein-Ligand Complex rst7 --> receptor.pdb and ligand.mol2."
    echo " --> Obtaing PDBQT's --> Compute AD4 Maps --> Get score of minimized pose"
    echo "--> redock ligand in minimized pocket."
@@ -28,7 +30,6 @@ Help()
    echo "  -x RESCORE_REDOCKING  (default=1). Perform rescoring of minimized pose, and perform docking on minimized pocket."
    echo "  -t CUTOFF             (default=2.0). Cutoff employed for clustering of redocked poses."
    echo
-   echo "Examples:"
 
 }
 
@@ -95,16 +96,16 @@ then
 
     echo "Obtaining receptor.pdb and ligand.mol2"
 
-    cat <<EOF > "./get_rec_lig.in"
-parm ../../../../topo/${LIGAND_NAME}_vac_com.parm7
-trajin ../${RST7_FILE}
-# Save receptor and ligand separated
-strip :${LIGAND_RESNUMBER} # receptor
-trajout receptor.pdb
-run
-strip !(:${LIGAND_RESNUMBER}) #ligando
-trajout ${LIGAND_NAME}_GAFF2.mol2
-run
+    cat <<-EOF > "./get_rec_lig.in"
+    parm ../../../../topo/${LIGAND_NAME}_vac_com.parm7
+    trajin ../${RST7_FILE}
+    # Save receptor and ligand separated
+    strip :${LIGAND_RESNUMBER} # receptor
+    trajout receptor.pdb
+    run
+    strip !(:${LIGAND_RESNUMBER}) #ligando
+    trajout ${LIGAND_NAME}_GAFF2.mol2
+    run
 EOF
 
     ${AMBERHOME}/bin/cpptraj -i ${IPATH}/docking_score_only/get_rec_lig.in
