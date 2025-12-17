@@ -34,7 +34,6 @@ while getopts ":hc:d:o:" option; do
 done
 
 SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-echo $@
 
 LIGAND_NAME=$(basename $LIGAND_NAME .dlg)
 

@@ -67,7 +67,7 @@ parallel --jobs ${THREADS} '
     # Sorting conformations #
     #########################
     "
-    ${SCRIPT_PATH}/sort_pdb.sh -d ${LIGAND_DLG} -o ${OPATH}
+    #${SCRIPT_PATH}/sort_pdb.sh -d ${LIGAND_DLG} -o ${OPATH}
 
     echo "Done sorting conformations!"
 
@@ -76,7 +76,7 @@ parallel --jobs ${THREADS} '
     # Creating csv file with docking scores #
     #########################################
     "
-    ${SCRIPT_PATH}/extract_energies.sh -d ${LIGAND_DLG} -o ${OPATH}
+    #${SCRIPT_PATH}/extract_energies.sh -d ${LIGAND_DLG} -o ${OPATH}
 
     echo "Done creating csv file with docking scores!"
 
@@ -85,7 +85,7 @@ parallel --jobs ${THREADS} '
     # Calculating RMSD matrix #
     ###########################
     "
-    ${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -o ${OPATH}
+    #${SCRIPT_PATH}/rmsd_matrix.sh -d ${LIGAND_DLG} -o ${OPATH}
 
     echo "Done calculating RMSD matrix"
 
@@ -94,5 +94,5 @@ parallel --jobs ${THREADS} '
     # Performing clustering based on RMSD #
     #######################################	
     "
-    ${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -o ${OPATH} -c ${CUTOFF}
-' ::: ${IPATH}/*.dlg
+    #${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -o ${OPATH} -c ${CUTOFF}
+' ::: ${IPATH}/*Fenilo_4-tiazolina*.dlg

@@ -14,9 +14,9 @@ process_data <- function(rmsd_df_path, scores_path) {
   scores <- read.csv(scores_path, header = F, sep = ";")
   rmsd_df <- cbind(scores, rmsd_df)
   colnames(rmsd_df) <- c("Energia", "Run", "Nombre", "Index", seq(nrow(rmsd_df)))
-  write.table(rmsd_df, '~/Desktop/rmsd_df.csv', row.names = F)
+#  write.table(rmsd_df, '~/Desktop/rmsd_df.csv', row.names = F)
   rmsd_matrix <- as.matrix(rmsd_df[, 5:ncol(rmsd_df)])
-
+#  write.table(rmsd_matrix, '~/Desktop/rmsd_df.csv', row.names = F)
   return (list(rmsd_df, rmsd_matrix))
 }
 
@@ -61,17 +61,16 @@ cluster_docking <- function(rmsd_matrix, cutoff = 2.0) {
 write_sdf_clusters <- function(rmsd_df, sdf_path, clusters, output_path,
                                ligand_name, cutoff) {
   sdf_file <- ChemmineR::read.SDFset(sdf_path)
-  
   # Outliers means clusters with only one member
-  
   drop_indices <- which(lengths(clusters) == 1)
   outliers <- unlist(clusters[drop_indices])
-  clusters <- clusters[-drop_indices]
+  
+  if (length(drop_indices) > 0) {
+    clusters <- clusters[-drop_indices]
+  }
   
   for (cluster_index in seq_along(clusters)) {
-
     cluster <- clusters[[cluster_index]]
-    
     statistics <- rmsd_df |>
       filter(as.integer(Index) %in% cluster) |>
       summarise(N=n(),
