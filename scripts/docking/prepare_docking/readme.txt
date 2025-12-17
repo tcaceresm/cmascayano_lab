@@ -35,17 +35,23 @@ Steps to prepare the protein:
         4.2) mk_prepare_receptor -i protein.pdb --write_pdbqt protein_prepared.pdbqt
 
 Steps to compute grid maps files
-    1) Check for prepare_gpf.py script and pythonsh from MGLTools or ADFRsuite
+    1) Check for prepare_gpf4.py script and pythonsh from MGLTools or ADFRsuite
         1.1) https://ccsb.scripps.edu/mgltools/
         1.2) https://ccsb.scripps.edu/adfr/downloads/
     2) Check Grid box size and center coordinates.
     3) Check all ligands atom types:
         3.1) awk '{print $12}' *.pdbqt | sort | uniq
-    3) Run:
-       pythonsh prepare_gpf.py -l any_ligand.pdbqt \ 
+    3) Get grid parameter file (GPF):
+       pythonsh prepare_gpf4.py -l any_ligand.pdbqt \ 
        -r receptor.pdbqt \
        -p npts='X,Y,Z' \ # Size of GridBox
        -p gridcenter='X,Y,Z' \ # Coordinates of center of GridBox
        -p ligand_types='A,C,HD,OA' # Ligand AtomTypes. Can edit as needed
     4) Run:
        autogrid4 -p receptor.gpf -l receptor.glg
+
+Steps to use classic AutoDock4 (NO GPU)
+In adition to above steps, follow this only if you want to use AutoDock4. The steps mentioned above are enough to use AutoDock4-GPU.
+    1) Obtain DPF file:
+       pythonsh prepare_dpf42.py -l ligand.pdbqt -r receptor.pdbqt -p ga_run=100
+
