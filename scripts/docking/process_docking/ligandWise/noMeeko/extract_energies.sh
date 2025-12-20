@@ -7,7 +7,7 @@ Help() {
     echo "Syntax: extract_energies.sh [-h|d|f|o]"
     echo "Requires an already processed DLG file (process_dlg.sh)."
     echo "  The processed directory must be the same than "Processed DLG output directory" used by process_dlg.sh (-o flag)."
-    echo "  Also, requires the output of sort_pdb.sh."
+    echo "  Also, requires the output of sort_pdb.sh (docking_energies.txt)."
     echo "Options:"
     echo "h     Print help"
     echo "d     DLG file."
@@ -41,16 +41,5 @@ then
     exit 1
 fi
 
-sed -i 's/ /;/g' $ENERGY_FILE
-
-TMP_FILE="$LIGAND_PDB_PATH/tmp.txt"
-
-seq $(cat $ENERGY_FILE | wc -l) | sed -E "s/.+/${LIGAND_NAME}/" > $TMP_FILE
-
 # Energies of single ligand
-
-paste -d ';' $ENERGY_FILE $TMP_FILE > "${PROCESSED_DIRECTORY}/${LIGAND_NAME}/docking_scores.csv"
-rm $TMP_FILE
-
-# All ligand energies
-#cat "$LIGAND_PDB_PATH/${LIGAND_NAME}_scores.csv" >> $ALL_LIGAND_ENERGIES
+awk -v ligand_name=${LIGAND_NAME} '{print $0 ";" ligand_name}' ${ENERGY_FILE} > "${PROCESSED_DIRECTORY}/${LIGAND_NAME}/docking_scores.csv"
