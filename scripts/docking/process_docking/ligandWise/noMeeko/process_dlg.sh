@@ -56,7 +56,7 @@ MOL2_DIR="${OPATH}/${LIGAND_NAME}/mol2"
 
 mkdir -p "${OPATH}/${LIGAND_NAME}"/{pdbqt,pdb,sdf,mol2}
 
-# Process dlg
+# Process dlg to pdbqt
 awk '
     $0 ~ /DOCKED/ &&
     $0 !~ /FINAL DOCKED STATE/ &&
@@ -73,17 +73,11 @@ mv ${LIGAND_PDBQT} ${PDBQT_DIR}
 
 echo "Converted ${DLG_FILE} to ${LIGAND_PDBQT}"
 
+# Process pdbqt to pdb
+
 obabel -ipdbqt ${PDBQT_DIR}/${LIGAND_PDBQT} -opdb -O"${PDB_DIR}/${LIGAND_NAME}_withMetal.pdb"
 echo "Converted ${LIGAND_PDBQT} to ${LIGAND_NAME}.pdb"
 
 # Clean Metal atoms
-
-awk '!(($1 == "ATOM" || $1 == "HETATM") && ($3 == "Fe" || $3 == "Ru" || $3 == "Re"))' "${PDB_DIR}/${LIGAND_NAME}_withMetal.pdb" > "${PDB_DIR}/${LIGAND_NAME}.pdb"
-
-#obabel -ipdbqt ${PDBQT_DIR}/${LIGAND_PDBQT} -osdf -O"${SDF_DIR}/${LIGAND_NAME}.sdf"
-#echo "Converted ${LIGAND_PDBQT} to ${LIGAND_NAME}.sdf"
-
-#obabel -ipdbqt ${PDBQT_DIR}/${LIGAND_PDBQT} -omol2 -O"${MOL2_DIR}/${LIGAND_NAME}.mol2"
-#echo "Converted ${LIGAND_PDBQT} to ${LIGAND_NAME}.mol2"
-
-
+awk '!(($1 == "ATOM" || $1 == "HETATM") && ($3 == "Fe" || $3 == "Ru" || $3 == "Re" || $3 == "Mn"))' \
+    "${PDB_DIR}/${LIGAND_NAME}_withMetal.pdb" > "${PDB_DIR}/${LIGAND_NAME}.pdb"
