@@ -1,5 +1,8 @@
 This folder contains scripts related to processing of docking output.
-It relies in ChemmineR R packages.
+There are two ways of processing docking output, depending if you used Meeko or not.
+If you didn't used Meeko, refer to noMeeko folder.
+
+Requires ChemmineR package.
 
 Main script:
 
