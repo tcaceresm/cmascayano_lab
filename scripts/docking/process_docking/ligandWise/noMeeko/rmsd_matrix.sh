@@ -52,8 +52,7 @@ then
     exit 1
 fi
 
-
 echo "Performing RMSD matrix calculation of ${LIGAND_NAME}"
 obrms -x ${SDF_DIR}/${LIGAND_NAME}_sorted_conformations.sdf > "${RMSD_FILE}_tmp"
-cat "${RMSD_FILE}_tmp" | awk '{$1=""}1' > "${RMSD_FILE}"
+awk '{$1=""; print $0}' "${RMSD_FILE}_tmp" > "${RMSD_FILE}"
 rm "${RMSD_FILE}_tmp"
