@@ -78,9 +78,7 @@ awk -v energy_file=${ENERGY_FILE} -v conformation_dir=${CONFORMATIONS_DIR} '
     }
     ' $PDB_FILE
 
-if [[ -f "${ENERGY_FILE}" ]]; then
-    :
-else
+if [[ ! -f "${ENERGY_FILE}" ]]; then
     echo "Energy File not generated!. Please check ${LIGAND_NAME}"
     exit 1
 fi
@@ -92,18 +90,16 @@ sort -n ${ENERGY_FILE} -o ${ENERGY_FILE}
 SORTED_FILE="${CONFORMATIONS_DIR}/${LIGAND_NAME}_sorted_conformations.pdb"
 > ${SORTED_FILE}
 
-# Leer el archivo de energías y concatenar las conformaciones ordenadas
-BEST_POSE=true
-while IFS= read -r line; do
-    MODEL_NUM=$(echo "$line" | awk '{print $2}')
-    cat "${CONFORMATIONS_DIR}/model_${MODEL_NUM}.pdb" >> ${SORTED_FILE}
+# Leer solo la primera línea para el mejor pose
+read -r _ MODEL_NUM _ < "${ENERGY_FILE}"
+cat "${CONFORMATIONS_DIR}/model_${MODEL_NUM}.pdb" > "${CONFORMATIONS_DIR}/${LIGAND_NAME}_best_pose.pdb"
 
-    if ${BEST_POSE}
-    then
-        cat "${CONFORMATIONS_DIR}/model_${MODEL_NUM}.pdb" > "${CONFORMATIONS_DIR}/${LIGAND_NAME}_best_pose.pdb"
-        BEST_POSE=false
-    fi
-done < ${ENERGY_FILE}
+# Procesar todas las líneas para el archivo ordenado
+while read -r _ MODEL_NUM _; do
+    cat "${CONFORMATIONS_DIR}/model_${MODEL_NUM}.pdb" >> "${SORTED_FILE}"
+done < "${ENERGY_FILE}"
+
+sed -i 's/ /;/g' $ENERGY_FILE
 
 echo "Sorted PDB!"
 
