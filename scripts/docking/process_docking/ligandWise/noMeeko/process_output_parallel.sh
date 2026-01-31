@@ -95,4 +95,4 @@ parallel --jobs ${THREADS} '
     #######################################	
     "
     #${SCRIPT_PATH}/run_clustering.sh -d ${LIGAND_DLG} -o ${OPATH} -c ${CUTOFF}
-' ::: ${IPATH}/*Fenilo_4-tiazolina*.dlg
+' ::: ${IPATH}/*4_*.dlg

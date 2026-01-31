@@ -54,7 +54,7 @@ PDB_DIR="${OPATH}/${LIGAND_NAME}/pdb"
 SDF_DIR="${OPATH}/${LIGAND_NAME}/sdf"
 MOL2_DIR="${OPATH}/${LIGAND_NAME}/mol2"
 
-mkdir -p "${OPATH}/${LIGAND_NAME}"/{pdbqt,pdb,sdf,mol2}
+mkdir -p  "${OPATH}/${LIGAND_NAME}"/{pdbqt,pdb,sdf,mol2} 
 
 # Process dlg to pdbqt
 awk '
