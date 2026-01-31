@@ -1,232 +1,401 @@
 #!/usr/bin/bash
 
+# Global variables are always UPPERCASE.
+# Local are used with local keyword and lowercase.
+# If some function requires too much arguments,
+# try using global variables directly, however, this is harder to
+# read and debug.
+
+#set -x
 set -euo pipefail
+# parallel --joblog MD_metal_docking_score_only.log -j 8 bash MD_docking_score_only.sh -d . --ligand ligands/{1} --equi 0 --prod 1 --start_frame 10000 --end_frame 10000 -n 1 ::: ligands/*.mol2
 
-############################################################
-# Help                                                     #
-############################################################
-Help()
-{
-   # Display Help
-   echo "Script to perform rescore and redocking of protein-ligand complex"
-   echo "obtained from AMBER minimization".
-   echo "Docking is computed using AutoDock-GPU"
-   echo "Workflow:"
-   echo "AMBER Protein-Ligand Complex rst7 --> receptor.pdb and ligand.mol2."
-   echo " --> Obtaing PDBQT's --> Compute AD4 Maps --> Get score of minimized pose"
-   echo "--> redock ligand in minimized pocket."
-   echo "All AD4 scripts are provided in this folder"
-   echo "Requires AMBER cpptraj and a rst7 file (without water and ions) from minimization."
-   echo
-   echo "Options:"
-   echo "  -h                    Print this help"
-   echo "  -d DIRECTORY          MMPBSA_rescoring folder."
-   echo "  -n LIG_RESIDUE        (default=2717). Ligand residue number."
-   echo "  -a LIG_NAME           Ligand name."
-   echo "  -p PROCESS_RST7       (default=1). Process rst7 from minimization in AMBER. Requires cpptraj".
-   echo "  -f RST7_FILE          (default="min_no_ntr_noWAT.rst7"). RST7 filename."        
-   echo "  -q OBTAIN_PDBQT       (default=1). Obtain PDBQTs of ligand and receptor."
-   echo "  -m PREPARE_MAPS       (default=1). Calculate grid maps for AD4."
-   echo "  -x RESCORE_REDOCKING  (default=1). Perform rescoring of minimized pose, and perform docking on minimized pocket."
-   echo "  -t CUTOFF             (default=2.0). Cutoff employed for clustering of redocked poses."
-   echo
+function ScriptInfo() {
+  DATE="2025"
+  VERSION="0.0.1"
+  GH_URL="https://github.com/tcaceresm/cmascayano_lab"
+  LAB="http://schuellerlab.org/"
 
+  cat <<EOF
+###################################################
+Welcome to MD_docking_score_only version ${VERSION} ${DATE}   
+Author: Tomás Cáceres <caceres.tomas@uc.cl>    
+Laboratory of Computational simulation & drug design        
+GitHub <${GH_URL}>                             
+Powered by high fat food and procrastination   
+###################################################
+EOF
 }
+
+Help() {
+  cat <<EOF
+  
+$(ScriptInfo)
+  
+Usage: 
+	
+	Under construction.
+
+Computes ligand affinity scores using AD4 forcefield and MD conformations.
+Calculations are paralelized using GNU parallel package.
+
+Requirements:
+  -> A folder structure and topologies obtained with setup_MD.sh script.
+  -> Trajectories obtained with run_MD.sh and processed with process_MD.sh.
+
+Required options:
+-d, --work_dir     <DIR>        Working directory. Inside this directory, a folder named setupMD should exist, containing all topologies and MD files.
+-l, --ligand       <FilePath>       Ligand to perform score only.
+Optional:
+-h, --help                      Show this help.
+--equi             <0|1>        (default=1) Use trajectory from equilibration phase (noWAT_traj.nc)
+--prod             <0|1>        (default=1) Use trajectory from production phase (noWAT_traj.nc).
+--npts             <"x,y,z">    (default="61,60,60") Size of docking box.
+--only_process     <0|1>        (default=0) Process existing results.
+--start_frame      <int>        (default=1) Frame to begin reading at.
+--end_frame        <int|"last"> (default="last") Frame to stop reading at; if not specified or "last" specified, end of trajectory.
+--interval         <int>        (default=1) Offset for reading in trajectory frames.
+-n, --replicas     <int>        (default=3) Number of replicas or repetitions.
+--start_replica    <int>        (default=1) Run from --start_replica to --replicas.
+--cores            <int>        (default=4) Cores to use for calculations.
+EOF
+}
+
+
+# Check arguments
+if [[ "$#" == 0 ]]; then
+  echo "No options provided."
+  echo "Use --help option to check available options."
+  exit 1
+fi
 
 # Default values
 
-LIGAND_RESNUMBER=2717
-RST7_FILE="min_no_ntr_noWAT.rst7"
+RUN_EQUI=1
+RUN_PROD=1
+NPTS="61,60,60"
+START_FRAME=1
+END_FRAME="last"
+OFFSET=1
+START_REPLICA=1
+REPLICAS=3
+PYTHONSH="/home/tcaceres/apps/mgltools_x86_64Linux2_1.5.7/bin/pythonsh"
+CORES=4
 
-############################################################
-# Process the input options. Add options as needed.        #
-############################################################
-# Get the options
-
-while getopts ":hd:n:a::p:f:q:m:x:k:t:" option; do
-    case $option in
-        h)  # Print this help
-            Help
-            exit;;
-        d)  # Enter the mmpbsa_rescoring directory
-            IPATH=$OPTARG;;
-        n)  # Ligand residue number in PL complex.
-            LIGAND_RESNUMBER=$OPTARG;;
-        a)  # Ligand name
-            LIGAND_NAME=$OPTARG;;
-        p)  # Process RST7
-            PROCESS_RST=$OPTARG;;
-        f)  # Minimization file
-            RST7_FILE=$OPTARG;;
-        q)  # Obtain PDBQT
-            OBTAIN_PDBQT=$OPTARG;;
-        m)  # Prepare maps for AD
-            PREPARE_MAPS=$OPTARG;;
-        x)  # Rescore and redocking
-            RESCORE_and_REDOCKING=$OPTARG;;
-        k)  # Process redocking
-            PROCESS_REDOCKING=$OPTARG;;
-        t)  # Clustering cutoff of redocking poses
-            CUTOFF=$OPTARG;;
-        \?) # Invalid option
-            echo "Error: Invalid option"
-            exit;;
-    esac
+# CLI option parser
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  '-d' | '--work_dir'        ) shift ; WDDIR=$1 ;;
+  '-l' | '--ligand'          ) shift ; LIGAND_PATH=$1 ;;
+  '--equi'                   ) shift ; RUN_EQUI=$1 ;;
+  '--prod'                   ) shift ; RUN_PROD=$1 ;;
+  '--npts'                   ) shift ; NPTS=$1 ;;
+  '--start_frame'            ) shift ; START_FRAME=$1 ;;
+  '--end_frame'              ) shift ; END_FRAME=$1 ;;
+  '--offset'                 ) shift ; OFFSET=$1 ;;
+  '-n' | '--replicas'        ) shift ; REPLICAS=$1 ;;
+  '--start_replica'          ) shift ; START_REPLICA=$1 ;;
+  '--cores'                  ) shift ; CORES=$1 ;;
+  '--help' | '-h'            ) Help ; exit 0 ;;
+  *                          ) echo "Unrecognized command line option: $1" >> /dev/stderr ; exit 1 ;;
+  esac
+  shift
 done
 
-SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+function CheckProgram() {
+  # Check if command is available
+  for PROGRAM in "$@"; do
+    if ! command -v ${PROGRAM} >/dev/null 2>&1; then
+      echo "Error: <${PROGRAM}> program not available, exiting."
+      exit 1
+    fi
+  done
+}
 
-# cpptraj
+function CheckFiles() {
+  # Check existence of files
+  for FILE in "$@"; do
+    if [[ ! -f ${FILE} ]]; then
+      echo "Error: <${FILE}> file doesn't exist."
+      exit 1
+    fi
+  done
+}
 
-if [[ -z ${AMBERHOME} ]]
-then
-    echo "AMBERHOME not found."
-    echo "Exiting..."
-    exit 1
-fi
+function ParseDirectory() {
+  local mode=$1
+  local lig=$2
+  local rep=$3
 
-# Check if mmpbsa_rescoring/docking_score_only exists
+  DOCK_SCORE_ONLY_DIR=${WDDIR}/setupMD/${RECEPTOR_NAME}/proteinLigandMD/${lig}/MD/rep${rep}/${mode}/npt/dock_score_only
+  mkdir -p ${DOCK_SCORE_ONLY_DIR}
 
-mkdir -p "${IPATH}/docking_score_only"
-cd ${IPATH}/docking_score_only
+}
 
-if [[ ${PROCESS_RST} -eq 1 ]]
-then
-    # Prepare cpptraj input file to obtain receptor.pdb and ligand.mol2 (GAFF2 atom type)
+function ParseFiles() {
+  # Set topologies and trajectories files.
 
-    echo "Obtaining receptor.pdb and ligand.mol2"
+  local mode=$1
+  local lig=$2
+  local rep=$3
 
-    cat <<-EOF > "./get_rec_lig.in"
-    parm ../../../../topo/${LIGAND_NAME}_vac_com.parm7
-    trajin ../${RST7_FILE}
-    # Save receptor and ligand separated
-    strip :${LIGAND_RESNUMBER} # receptor
-    trajout receptor.pdb
-    run
-    strip !(:${LIGAND_RESNUMBER}) #ligando
-    trajout ${LIGAND_NAME}_GAFF2.mol2
-    run
+  # Topologies
+  VAC_COM_TOPO="../../../../../topo/${lig}_vac_com.parm7"
+  VAC_REC_TOPO="../../../../../topo/${lig}_vac_rec.parm7"
+  VAC_LIG_TOPO="../../../../../topo/${lig}_vac_lig.parm7"
+
+  CheckFiles ${VAC_COM_TOPO} ${VAC_REC_TOPO} ${VAC_LIG_TOPO}
+
+  # Trajectories
+  if [[ "${mode}" == "equi" ]]; then
+    # EQUI_TRAJ=${WDDIR}/setupMD/${RECEPTOR_NAME}/proteinLigandMD/${lig}/MD/rep${rep}/${mode}/npt/noWAT_traj.nc
+    EQUI_TRAJ="../noWAT_traj.nc"
+    CheckFiles ${EQUI_TRAJ}
+  fi
+
+  if [[ "${mode}" == "prod" ]]; then
+    # PROD_TRAJ=${WDDIR}/setupMD/${RECEPTOR_NAME}/proteinLigandMD/${lig}/MD/rep${rep}/${mode}/npt/noWAT_traj.nc
+    PROD_TRAJ="../noWAT_traj.nc"
+    CheckFiles ${PROD_TRAJ}
+  fi
+
+  # Ligands' PDBQT files
+  # LIGAND_PDBQT=${WDDIR}/ligand_pdbqt/${lig}/${lig}.pdbqt
+  # CheckFiles ${LIGAND_PDBQT}
+}
+
+function TotalResWrapper() {
+  # Obtain total residue of solute, using dry topology.
+  local com_topo=$1
+
+  CheckFiles ${com_topo}
+
+  TOTALRES=$(cpptraj -p ${com_topo} --resmask \* | tail -n 1 | awk '{print $1}')
+}
+
+function generate_cpptraj_input() {
+  local traj=$1
+  local outfile=$2
+
+  cat > "$outfile" <<EOF
+parm ${VAC_COM_TOPO}
+trajin ${traj} ${START_FRAME} ${END_FRAME} ${OFFSET}
+vector center :${TOTALRES} out lig_com.dat
+strip :${TOTALRES}
+trajout conformations/${RECEPTOR_NAME}.pdb pdb multi keepext
+run
+strip !(:${TOTALRES})
+trajout conformations/${LIGAND_NAME}.mol2 mol2 multi sybyltype keepext
 EOF
+}
 
-    ${AMBERHOME}/bin/cpptraj -i ${IPATH}/docking_score_only/get_rec_lig.in
+function run_cpptraj() {
+  local input=$1
+  CheckProgram cpptraj
+  cpptraj -i "$input"
+}
 
+function split_conformation_files() {
+  local traj=$1
+  local cpptraj_in=$2
 
-    echo "REMINDER: Ligand MOL2 format have GAFF2 atom types. Going to use antechamber to obtain SYBYL atom types."
-    echo
-    echo "#########################################################"
-    echo "Using antechamber to convert GAFF2 -> SYBYL atom types"
-    echo "#########################################################"
-    echo
+  generate_cpptraj_input "$traj" "$cpptraj_in"
+  run_cpptraj "$cpptraj_in"
+  
+}
 
-    ${AMBERHOME}/bin/antechamber -i ${IPATH}/docking_score_only/${LIGAND_NAME}_GAFF2.mol2 -fi mol2 -o ${IPATH}/docking_score_only/${LIGAND_NAME}_SYBYL.mol2 -fo mol2 -at sybyl -pf y
-    echo "Done!"
-    echo
-fi
+function get_conf_number() {
+  local file=$1
+  local conf=${file%.*}
+  conf=${conf#*.}
+  
+  echo "$conf"
+}
 
-if [[ ${OBTAIN_PDBQT} -eq 1 ]]
-then
-    echo "######################"
-    echo "Obtaining PDBQT files using OpenBabel"
-    echo "######################"
+function mv_conformation_files() {
+  local file=$1
+  local conf=$2
 
-    if [[ -z $(which obabel) ]]
-    then
-    echo " obabel not found."
-    echo " Exiting..."
-    exit 1
-    fi
+  local dir="conformation_number_${conf}"
+  mkdir -p "$dir"
 
-    echo " Processing receptor "
-    ${SCRIPT_PATH}/prepare_receptor4.py -r ${IPATH}/docking_score_only/receptor.pdb
-    echo "  OK!"
+  mv ${RECEPTOR_NAME}.${conf}.pdb \
+     ${LIGAND_NAME}.${conf}.mol2 \
+     "$dir"
+}
 
-    echo
-    echo " Processing Ligand "
+function convert_ligand_to_pdbqt() {
+  local lig=$1
+  CheckProgram obabel
 
-    obabel -i mol2 ${IPATH}/docking_score_only/${LIGAND_NAME}_SYBYL.mol2 -o pdbqt -O ${IPATH}/docking_score_only/${LIGAND_NAME}.pdbqt
-    echo "  OK!"
-fi
+  obabel -i mol2 "${lig}.mol2" -o pdbqt -O "${lig}.pdbqt"
+}
 
+function get_com_for_conformation() {
+  local conf=$1
+  local com_file=$2
 
-if [[ ${PREPARE_MAPS} -eq 1 ]]
-then
-    echo "######################"
-    echo "Preparing GPF file    "
-    echo "Grid box centered on ligand "
-    echo "Size=50,50,50"
-    echo "######################"
+  awk -v conf="$conf" '
+    $1 == conf {
+      print $2, $3, $4
+      exit
+    }
+  ' "$com_file"
+}
 
-    #-y flag center grid box on ligand
-    ${SCRIPT_PATH}/prepare_gpf.py -l ${IPATH}/docking_score_only/${LIGAND_NAME}.pdbqt -r ${IPATH}/docking_score_only/receptor.pdbqt -y -p npts='50,50,50'
+function clean_pdb() {
+  # Clean PDB from non-standard resnames 
+  local pdb=$1
+  awk '$4 !~ /^(HM1|HD1|FE1)$/' ${pdb} > tmp.pdb && mv tmp.pdb ${pdb}
+}
 
-    if [[ -f "${IPATH}/docking_score_only/receptor.gpf" ]]
-    then
-        echo "GPF created!"
-    else
-        echo "GPF creation failed."
-        echo "Exiting..."
-        exit 1
-    fi
+function prepare_receptor() {
+  local pdb=$1
 
-    echo "###############################"
-    echo "Computing maps with AutoGrid."
-    echo "Maybe check AGFR, I think it's faster:"
-    echo " https://ccsb.scripps.edu/agfr/"
-    echo "##############################"
+  CheckProgram ${PYTHONSH}
+  ${PYTHONSH} ${SCRIPT_PATH}/prepare_receptor4.py -r "${pdb}"
+}
 
-    ${SCRIPT_PATH}/autogrid4 -p ${IPATH}/docking_score_only/receptor.gpf -l ${IPATH}/docking_score_only/receptor.glg
+function prepare_maps() {
+  local lig_pdbqt=$1
+  local rec_pdbqt=$2
+  local npts=$3
 
-    echo "Ok!"
-fi
+  local rec_name=${rec_pdbqt%.*}
 
-# echo "######################"
-# echo "Preparing DPF file    "
-# echo "######################"
+  CheckProgram ${PYTHONSH}  
+  #-y flag center grid box on ligand
+  ${PYTHONSH} ${SCRIPT_PATH}/prepare_gpf4.py -l ${lig_pdbqt} -r ${rec_pdbqt} -o ${rec_name}.gpf -y -p npts="${npts}"
 
-#${SCRIPT_PATH}/prepare_dpf4.py -l ${IPATH}/docking_score_only/${LIGAND_NAME}.pdbqt -r ${IPATH}/docking_score_only/receptor.pdbqt 
+  /home/tcaceres/apps/autodock4/autogrid4 -p ${rec_name}.gpf -l ${rec_name}.glg
 
-if [[ ${RESCORE_and_REDOCKING} -eq 1 ]]
-then
+}
 
-    echo "#################################"
-    echo "Computing score of input ligand  "
-    echo " and computing redocking         "
-    echo "#################################"
+function prepare_dpf() {
+  local lig_pdbqt=$1
+  local rec_pdbqt=$2
 
-    mkdir -p ${IPATH}/docking_score_only/redocking/
+  CheckProgram ${PYTHONSH}
+  ${PYTHONSH} ${SCRIPT_PATH}/prepare_dpf42.py -e -l ${lig_pdbqt} -r ${rec_pdbqt} 
 
-    /usr/local/bin/autodock_gpu_64wi -L ${IPATH}/docking_score_only/${LIGAND_NAME}.pdbqt -M ${IPATH}/docking_score_only/*.fld --resnam ${IPATH}/docking_score_only/redocking/${LIGAND_NAME}_redocking --nrun 1000 --rlige 1
+}
+function run_docking() {
+  local dpf=$1
+  local output=$2
+  /home/tcaceres/apps/autodock4/autodock4 -p ${dpf} -l ${output}
+}
 
-    # Get Binding affinity
+function gather_results() {
+  # obtain energy value from one conformation
+  local dlg_file=$1
+  local conf_number=$2
+  local energy
+  
+  declare -n results=$3
+  
+  energy=$(grep 'epdb: USER    Estimated Free Energy of Binding' ${dlg_file} \
+         | awk -F'= *| *kcal/mol' '{print $2}')
 
-    mkdir -p ${IPATH}/docking_score_only/score_only/
+  results["conformation_${conf_number}"]=${energy}
+}
 
-    awk '/INPUT-LIGAND-PDBQT: USER    Estimated Free Energy of Binding/ {print $9}' ${IPATH}/docking_score_only/redocking/${LIGAND_NAME}_redocking.dlg > ${IPATH}/docking_score_only/score_only/score_only.dat
-fi
+function output_results() {
+  declare -n results=$1
+  : > results.data
+  for key in "${!results[@]}"; do
+    echo "$key ${results[$key]}" >> results.data
+  done
+}
 
-if [[ ${PROCESS_REDOCKING} -eq 1 ]]
-then
-    /usr/bin/bash ${SCRIPT_PATH}/process_output.sh -d ${IPATH}/docking_score_only/redocking/ -o ${IPATH}/docking_score_only/redocking/processed_output -c ${CUTOFF}
-fi
+function process_one_conformation() {
+  local mol2file=$1
 
-# RMSD between redocking best pose and minimized docking pose
+  conf=$(get_conf_number "${mol2file}")
+  mv_conformation_files "${mol2file}" "${conf}"
 
-echo "############################"
-echo "Computing RMSD between minimized docked pose and redocking best pose"
-echo "############################"
+  pushd "conformation_number_${conf}" >/dev/null || exit 1
 
-if [[ ! -f "${IPATH}/docking_score_only/redocking/processed_output/${LIGAND_NAME}_redocking/sdf/${LIGAND_NAME}_redocking_best_pose.sdf" ]]
-then
-    echo "Redocking best pose not available"
-    echo "Did you run this script with -k option?"
-    echo "Can't calculate RMSD"
-    exit 1
-else
+  convert_ligand_to_pdbqt "${LIGAND_NAME}.${conf}"
 
-    obrms ${IPATH}/docking_score_only/${LIGAND_NAME}.pdbqt \
-    "${IPATH}/docking_score_only/redocking/processed_output/${LIGAND_NAME}_redocking/sdf/${LIGAND_NAME}_redocking_best_pose.sdf" | \
-    awk '{print $3}' > ${IPATH}/docking_score_only/redocking/rmsd.dat 
+  clean_pdb ${RECEPTOR_NAME}.${conf}.pdb
+  prepare_receptor ${RECEPTOR_NAME}.${conf}.pdb
 
-fi
+  prepare_maps \
+    ${LIGAND_NAME}.${conf}.pdbqt \
+    ${RECEPTOR_NAME}.${conf}.pdbqt \
+    ${NPTS}
 
-echo "Done!"
+  prepare_dpf \
+    ${LIGAND_NAME}.${conf}.pdbqt \
+    ${RECEPTOR_NAME}.${conf}.pdbqt
+
+  run_docking \
+    ${LIGAND_NAME}_${RECEPTOR_NAME}.dpf \
+    ${LIGAND_NAME}.${conf}_${RECEPTOR_NAME}.${conf}.dlg
+
+  popd >/dev/null
+}
+
+process() {
+  local traj=$1
+  local cpptraj_in="get_rec_conformations.in"
+
+  mkdir -p conformations
+  split_conformation_files "$traj" "$cpptraj_in"
+
+  pushd conformations >/dev/null || exit 1
+  . env_parallel.bash
+  env_parallel --joblog score_only.log -j ${CORES} process_one_conformation {} ::: *"${LIGAND_NAME}"*.mol2
+
+  declare -A RESULTS
+  for dlg in conformation_number_*/${LIGAND_NAME}.*_${RECEPTOR_NAME}.*.dlg; do
+    conf=${dlg%.*}
+    conf=${conf##*.}
+    gather_results "$dlg" "$conf" RESULTS
+  done
+
+  output_results RESULTS
+  popd >/dev/null
+}
+
+# export -f parallel_worker
+
+# export LIGAND_NAME RECEPTOR_NAME NPTS PYTHONSH SCRIPT_PATH
+
+############################################################
+# Main
+############################################################
+
+SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WDDIR=$(realpath "$WDDIR")
+RECEPTOR_NAME=$(basename "${WDDIR}/receptor/"*.pdb .pdb)
+
+for REP in $(seq ${START_REPLICA} ${REPLICAS}); do
+
+  #for LIGAND_PATH in ${LIGANDS_PATH[@]}; do
+
+  LIGAND_NAME=${LIGAND_PATH%.*}
+  LIGAND_NAME=${LIGAND_NAME##*/}
+
+  if [[ ${RUN_EQUI} -eq 1 ]]; then
+    ParseDirectory "equi" ${LIGAND_NAME} ${REP}
+    cd ${DOCK_SCORE_ONLY_DIR}
+    
+    ParseFiles "equi" ${LIGAND_NAME} ${REP}
+    TotalResWrapper ${VAC_COM_TOPO}
+    ExtractConformations ${EQUI_TRAJ}
+  fi
+
+  if [[ ${RUN_PROD} -eq 1 ]]; then
+    ParseDirectory "prod" ${LIGAND_NAME} ${REP}
+    cd ${DOCK_SCORE_ONLY_DIR}
+
+    ParseFiles "prod" ${LIGAND_NAME} ${REP}
+    TotalResWrapper ${VAC_COM_TOPO}
+    process ${PROD_TRAJ}
+  fi
+
+  #done
+
+done
+
